@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from './useLocalStorage';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { PostgrestError } from '@supabase/supabase-js';
 
 export const useSearchHistory = () => {
   const [searchHistory, setSearchHistoryLocal] = useLocalStorage<string[]>('searchHistory', []);
@@ -24,12 +25,11 @@ export const useSearchHistory = () => {
         .from('search_history')
         .select('history')
         .eq('user_id', id)
-        .single()
-        .throwOnError();
+        .single();
 
       if (error) {
         // If no history exists, create it using local history
-        if (error.code === 'PGRST116') {
+        if ((error as PostgrestError).code === 'PGRST116') {
           if (searchHistory.length > 0) {
             await saveSearchHistory(searchHistory);
           } else {
