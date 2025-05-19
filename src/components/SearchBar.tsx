@@ -4,16 +4,16 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 
 interface SearchBarProps {
   onSearch: (city: string) => void;
-  searchHistory: string[];
-  addToHistory: (city: string) => void;
 }
 
-export default function SearchBar({ onSearch, searchHistory, addToHistory }: SearchBarProps) {
+export default function SearchBar({ onSearch }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const { searchHistory, addToHistory } = useSearchHistory();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

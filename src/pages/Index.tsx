@@ -5,20 +5,34 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import SearchBar from "@/components/SearchBar";
 import CurrentWeather from "@/components/CurrentWeather";
 import DailyForecast from "@/components/DailyForecast";
+import UserPreferences from "@/components/UserPreferences";
 import EmptyState from "@/components/EmptyState";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { fetchWeatherByCity, fetchWeatherByCoords, fetchForecast } from "@/lib/api";
 import { getDayOfWeek, getWeatherBackground } from "@/lib/utils";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
+import { useWeatherProfile } from "@/hooks/useWeatherProfile";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
-  const [searchHistory, setSearchHistory] = useLocalStorage<string[]>("searchHistory", []);
   const [currentWeather, setCurrentWeather] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const { profile } = useWeatherProfile();
 
+  // Set initial theme based on profile
+  useEffect(() => {
+    if (profile.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (profile.theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else if (profile.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+  }, [profile.theme]);
+
+  // Monitor dark mode changes
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -34,16 +48,12 @@ const Index = () => {
     return () => observer.disconnect();
   }, []);
 
-  const addToHistory = (city: string) => {
-    if (!searchHistory.includes(city)) {
-      const newHistory = [city, ...searchHistory].slice(0, 5);
-      setSearchHistory(newHistory);
-    } else {
-      // Move the city to the top of the history
-      const newHistory = [city, ...searchHistory.filter(item => item !== city)].slice(0, 5);
-      setSearchHistory(newHistory);
+  // Load default city if available
+  useEffect(() => {
+    if (profile.default_city && !currentWeather) {
+      handleSearch(profile.default_city);
     }
-  };
+  }, [profile.default_city]);
 
   const handleSearch = async (city: string) => {
     setLoading(true);
@@ -66,9 +76,9 @@ const Index = () => {
         date: weatherData.dt
       });
       
-      // Process 7-day forecast
+      // Process daily forecast data
       setForecast(
-        forecastData.daily.slice(0, 7).map((day: any) => ({
+        forecastData.daily.map((day: any) => ({
           date: day.dt,
           day: getDayOfWeek(day.dt),
           minTemp: day.temp.min,
@@ -95,11 +105,6 @@ const Index = () => {
             const { latitude, longitude } = position.coords;
             const weatherData = await fetchWeatherByCoords(latitude, longitude);
             
-            // Add city to search history
-            if (weatherData.name) {
-              addToHistory(weatherData.name);
-            }
-            
             const forecastData = await fetchForecast(latitude, longitude);
             
             setCurrentWeather({
@@ -115,9 +120,9 @@ const Index = () => {
               date: weatherData.dt
             });
             
-            // Process 7-day forecast
+            // Process daily forecast data
             setForecast(
-              forecastData.daily.slice(0, 7).map((day: any) => ({
+              forecastData.daily.map((day: any) => ({
                 date: day.dt,
                 day: getDayOfWeek(day.dt),
                 minTemp: day.temp.min,
@@ -159,11 +164,7 @@ const Index = () => {
           <ThemeToggle />
         </header>
 
-        <SearchBar 
-          onSearch={handleSearch} 
-          searchHistory={searchHistory}
-          addToHistory={addToHistory}
-        />
+        <SearchBar onSearch={handleSearch} />
 
         <main className="mt-8 space-y-6">
           {loading ? (
@@ -172,10 +173,22 @@ const Index = () => {
               <p className="mt-4 text-muted-foreground">Fetching weather data...</p>
             </div>
           ) : currentWeather ? (
-            <>
-              <CurrentWeather data={currentWeather} />
-              <DailyForecast forecast={forecast} />
-            </>
+            <Tabs defaultValue="current">
+              <TabsList className="glass-card w-full justify-start">
+                <TabsTrigger value="current">Current Weather</TabsTrigger>
+                <TabsTrigger value="forecast">7-Day Forecast</TabsTrigger>
+                <TabsTrigger value="preferences">Preferences</TabsTrigger>
+              </TabsList>
+              <TabsContent value="current" className="mt-4">
+                <CurrentWeather data={currentWeather} />
+              </TabsContent>
+              <TabsContent value="forecast" className="mt-4">
+                <DailyForecast forecast={forecast} />
+              </TabsContent>
+              <TabsContent value="preferences" className="mt-4">
+                <UserPreferences />
+              </TabsContent>
+            </Tabs>
           ) : (
             <EmptyState onGetLocation={handleGetLocation} />
           )}
@@ -188,6 +201,6 @@ const Index = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Index;
