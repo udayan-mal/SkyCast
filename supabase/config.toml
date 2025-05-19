@@ -1,1 +1,33 @@
+
 project_id = "xhztnomgjzvzmapdflgt"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "https://id-preview--e8e8d7f8-e4bf-40ce-a1eb-4dd28de7f8f2.lovable.app"
+
+[analytics]
+enabled = false
+port = 54327
+
+[extensions]
+enabled = false

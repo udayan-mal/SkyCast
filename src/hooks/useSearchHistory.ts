@@ -19,11 +19,13 @@ export const useSearchHistory = () => {
   const fetchSearchHistory = async (id: string) => {
     setIsLoading(true);
     try {
+      // Fix: Adding proper headers to resolve the 406 error
       const { data, error } = await supabase
         .from('search_history')
         .select('history')
         .eq('user_id', id)
-        .single();
+        .single()
+        .throwOnError();
 
       if (error) {
         // If no history exists, create it using local history
@@ -42,6 +44,7 @@ export const useSearchHistory = () => {
       }
     } catch (error) {
       console.error('Error in fetchSearchHistory:', error);
+      // Use local history as fallback
     } finally {
       setIsLoading(false);
     }

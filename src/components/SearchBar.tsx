@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { searchHistory, addToHistory } = useSearchHistory();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,17 +47,32 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
     };
   }, [isHistoryOpen]);
 
+  // Conditionally set focus to search input
+  useEffect(() => {
+    // Only focus on the searchbar if we're certain no other element needs focus
+    // and after the DOM is fully loaded
+    const timer = setTimeout(() => {
+      if (searchInputRef.current && document.activeElement === document.body) {
+        searchInputRef.current.focus();
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="relative w-full max-w-md mx-auto animate-fade-in-down">
       <form onSubmit={handleSearch} className="flex items-center gap-2">
         <div className="relative flex-1">
           <Input
+            ref={searchInputRef}
             type="text"
             placeholder="Search for a city..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => searchHistory.length > 0 && setIsHistoryOpen(true)}
             className="pr-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            // removed autofocus attribute to avoid conflicts
           />
           {query && (
             <button
