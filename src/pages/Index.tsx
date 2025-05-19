@@ -7,12 +7,16 @@ import CurrentWeather from "@/components/CurrentWeather";
 import DailyForecast from "@/components/DailyForecast";
 import UserPreferences from "@/components/UserPreferences";
 import EmptyState from "@/components/EmptyState";
+import UnitToggle from "@/components/UnitToggle";
 import { fetchWeatherByCity, fetchWeatherByCoords, fetchForecast } from "@/lib/api";
 import { getDayOfWeek, getWeatherBackground } from "@/lib/utils";
-import { Loader } from "lucide-react";
+import { Loader, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useWeatherProfile } from "@/hooks/useWeatherProfile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
@@ -20,6 +24,7 @@ const Index = () => {
   const [forecast, setForecast] = useState<any[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { profile } = useWeatherProfile();
+  const { user } = useAuth();
 
   // Set initial theme based on profile
   useEffect(() => {
@@ -83,7 +88,9 @@ const Index = () => {
           day: getDayOfWeek(day.dt),
           minTemp: day.temp.min,
           maxTemp: day.temp.max,
-          condition: day.weather[0].main
+          condition: day.weather[0].main,
+          humidity: day.humidity,
+          windSpeed: day.wind_speed
         }))
       );
       
@@ -127,7 +134,9 @@ const Index = () => {
                 day: getDayOfWeek(day.dt),
                 minTemp: day.temp.min,
                 maxTemp: day.temp.max,
-                condition: day.weather[0].main
+                condition: day.weather[0].main,
+                humidity: day.humidity,
+                windSpeed: day.wind_speed
               }))
             );
             
@@ -161,7 +170,23 @@ const Index = () => {
       <div className="container max-w-4xl mx-auto py-8 px-4">
         <header className="flex justify-between items-center mb-8">
           <Logo />
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <UnitToggle />
+            <ThemeToggle />
+            {!user ? (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/auth">
+                  <UserRound className="h-4 w-4 mr-2" />
+                  Sign In
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>
+                <UserRound className="h-4 w-4 mr-2" />
+                {user.email?.split('@')[0]}
+              </Button>
+            )}
+          </div>
         </header>
 
         <SearchBar onSearch={handleSearch} />

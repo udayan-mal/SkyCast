@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { Wind, Droplets, Thermometer, Sunrise, Sunset } from "lucide-react";
 import { useEffect, useState } from "react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTempUnit } from "@/lib/utils";
+import { useWeatherProfile } from "@/hooks/useWeatherProfile";
 
 interface CurrentWeatherProps {
   data: {
@@ -22,6 +23,8 @@ interface CurrentWeatherProps {
 
 export default function CurrentWeather({ data }: CurrentWeatherProps) {
   const [mounted, setMounted] = useState(false);
+  const { profile } = useWeatherProfile();
+  const isMetric = profile.unit === "metric";
   
   useEffect(() => {
     setMounted(true);
@@ -46,7 +49,9 @@ export default function CurrentWeather({ data }: CurrentWeatherProps) {
             <div className="flex items-center gap-4">
               <WeatherIcon condition={data.condition} size={64} className="animate-float" />
               <div>
-                <div className="text-5xl font-bold">{Math.round(data.temperature)}°</div>
+                <div className="text-5xl font-bold">
+                  {formatTempUnit(data.temperature, isMetric)}
+                </div>
                 <div className="text-lg text-muted-foreground">{data.condition}</div>
               </div>
             </div>
@@ -57,7 +62,9 @@ export default function CurrentWeather({ data }: CurrentWeatherProps) {
               <Thermometer className="text-orange-500" />
               <div>
                 <div className="text-sm text-muted-foreground">Feels like</div>
-                <div className="font-medium">{Math.round(data.feelsLike)}°</div>
+                <div className="font-medium">
+                  {formatTempUnit(data.feelsLike, isMetric)}
+                </div>
               </div>
             </div>
             
@@ -73,7 +80,9 @@ export default function CurrentWeather({ data }: CurrentWeatherProps) {
               <Wind className="text-teal-500" />
               <div>
                 <div className="text-sm text-muted-foreground">Wind</div>
-                <div className="font-medium">{data.windSpeed} km/h</div>
+                <div className="font-medium">
+                  {isMetric ? data.windSpeed : (data.windSpeed * 0.621371).toFixed(1)} {isMetric ? 'km/h' : 'mph'}
+                </div>
               </div>
             </div>
             

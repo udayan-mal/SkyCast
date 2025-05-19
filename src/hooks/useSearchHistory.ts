@@ -3,40 +3,18 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from './useLocalStorage';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useSearchHistory = () => {
   const [searchHistory, setSearchHistoryLocal] = useLocalStorage<string[]>('searchHistory', []);
   const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Get the current user
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUserId(session.user.id);
-          await fetchSearchHistory(session.user.id);
-        } else {
-          setUserId(null);
-        }
-      }
-    );
-
-    // Check for an existing session
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUserId(session.user.id);
-        await fetchSearchHistory(session.user.id);
-      }
-    };
-
-    checkUser();
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
+    if (user) {
+      fetchSearchHistory(user.id);
+    }
+  }, [user]);
 
   const fetchSearchHistory = async (id: string) => {
     setIsLoading(true);
@@ -48,9 +26,8 @@ export const useSearchHistory = () => {
         .single();
 
       if (error) {
-        // If no history exists, create it
+        // If no history exists, create it using local history
         if (error.code === 'PGRST116') {
-          // Get local history and save to Supabase
           if (searchHistory.length > 0) {
             await saveSearchHistory(searchHistory);
           } else {
@@ -60,6 +37,7 @@ export const useSearchHistory = () => {
           console.error('Error fetching search history:', error);
         }
       } else if (data && data.history) {
+        // If user is logged in, prioritize Supabase data over local storage
         setSearchHistoryLocal(data.history);
       }
     } catch (error) {
@@ -70,12 +48,12 @@ export const useSearchHistory = () => {
   };
 
   const createEmptyHistory = async () => {
-    if (!userId) return;
+    if (!user) return;
     
     try {
       const { error } = await supabase
         .from('search_history')
-        .insert({ user_id: userId, history: [] });
+        .insert({ user_id: user.id, history: [] });
 
       if (error) {
         console.error('Error creating search history:', error);
@@ -86,26 +64,26 @@ export const useSearchHistory = () => {
   };
 
   const saveSearchHistory = async (history: string[]) => {
-    if (!userId) {
-      setSearchHistoryLocal(history);
-      return;
-    }
+    // Always update local storage
+    setSearchHistoryLocal(history);
+    
+    // If user is logged in, sync with Supabase
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from('search_history')
+          .upsert({ 
+            user_id: user.id, 
+            history: history.slice(0, 20), // Limit to 20 entries
+            updated_at: new Date().toISOString()
+          });
 
-    try {
-      const { error } = await supabase
-        .from('search_history')
-        .upsert({ 
-          user_id: userId, 
-          history: history.slice(0, 20), // Limit to 20 entries
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error('Error saving search history:', error);
-        toast.error('Failed to save your search history');
+        if (error) {
+          console.error('Error saving search history:', error);
+        }
+      } catch (error) {
+        console.error('Error in saveSearchHistory:', error);
       }
-    } catch (error) {
-      console.error('Error in saveSearchHistory:', error);
     }
   };
 
@@ -127,24 +105,26 @@ export const useSearchHistory = () => {
     // Limit to 20 items
     newHistory = newHistory.slice(0, 20);
     
-    // Update local state
+    // Update local storage
     setSearchHistoryLocal(newHistory);
     
     // Save to Supabase if logged in
-    if (userId) {
+    if (user) {
       saveSearchHistory(newHistory);
     }
   };
 
   const clearHistory = async () => {
+    // Clear local storage
     setSearchHistoryLocal([]);
     
-    if (userId) {
+    // Clear Supabase if logged in
+    if (user) {
       try {
         const { error } = await supabase
           .from('search_history')
           .update({ history: [], updated_at: new Date().toISOString() })
-          .eq('user_id', userId);
+          .eq('user_id', user.id);
 
         if (error) {
           console.error('Error clearing search history:', error);
@@ -163,6 +143,6 @@ export const useSearchHistory = () => {
     addToHistory,
     clearHistory,
     isLoading,
-    isAuthenticated: !!userId
+    isAuthenticated: !!user
   };
 };

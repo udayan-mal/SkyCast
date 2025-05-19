@@ -1,4 +1,3 @@
-
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -65,3 +64,13 @@ export function getWeatherBackground(condition: string, isDark: boolean): string
     }
   }
 }
+
+// Add new formatting function for temperature units
+export const formatTempUnit = (temp: number, isMetric: boolean): string => {
+  if (isMetric) {
+    return `${Math.round(temp)}°C`;
+  }
+  // Convert Celsius to Fahrenheit
+  const fahrenheit = (temp * 9/5) + 32;
+  return `${Math.round(fahrenheit)}°F`;
+};
