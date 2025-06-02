@@ -1,6 +1,6 @@
 
 import CurrentWeather from "@/components/CurrentWeather";
-import DailyForecast from "@/components/DailyForecast";
+import { ForecastSection } from "@/components/ForecastSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserPreferences from "@/components/UserPreferences";
 
@@ -16,8 +16,7 @@ export const WeatherContent = ({ currentWeather, forecast }: WeatherContentProps
       <CurrentWeather data={currentWeather} />
       
       {/* 7-Day Forecast displayed below current weather */}
-      <h2 className="text-2xl font-semibold mt-8 mb-4">7-Day Forecast</h2>
-      <DailyForecast forecast={forecast} />
+      <ForecastSection forecast={forecast} />
       
       {/* User Preferences are now in a separate tab */}
       <Tabs defaultValue="preferences" className="mt-8">
