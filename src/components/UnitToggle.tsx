@@ -6,7 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function UnitToggle() {
+interface UnitToggleProps {
+  onUnitChange?: () => void;
+}
+
+export default function UnitToggle({ onUnitChange }: UnitToggleProps) {
   const { profile, updateProfile } = useWeatherProfile();
   const { user } = useAuth();
   const [isMetric, setIsMetric] = useState(profile.unit === "metric");
@@ -19,13 +23,19 @@ export default function UnitToggle() {
     const newUnit = isMetric ? "imperial" : "metric";
     setIsMetric(!isMetric);
     
-    // Always update local state for immediate feedback
+    // Update profile with new unit
     const result = await updateProfile({ unit: newUnit });
     
-    if (!result && user) {
-      // If update failed but user is authenticated, show error
+    if (result || !user) {
+      // Call callback to refresh weather data
+      if (onUnitChange) {
+        onUnitChange();
+      }
+      toast.success(`Switched to ${newUnit === 'metric' ? 'Celsius' : 'Fahrenheit'}`);
+    } else {
+      // If update failed and user is authenticated, show error and revert
       toast.error("Failed to save preference");
-      setIsMetric(profile.unit === "metric"); // Revert to original
+      setIsMetric(profile.unit === "metric");
     }
   };
 

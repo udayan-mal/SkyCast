@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,6 +29,12 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
     setIsHistoryOpen(false);
   };
 
+  const handleClear = () => {
+    setQuery("");
+    setIsHistoryOpen(false);
+    searchInputRef.current?.focus();
+  };
+
   const handleHistoryItemClick = (city: string) => {
     onSearch(city);
     setIsHistoryOpen(false);
@@ -47,17 +53,17 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
     };
   }, [isHistoryOpen]);
 
-  // Conditionally set focus to search input
+  // Keyboard shortcuts
   useEffect(() => {
-    // Only focus on the searchbar if we're certain no other element needs focus
-    // and after the DOM is fully loaded
-    const timer = setTimeout(() => {
-      if (searchInputRef.current && document.activeElement === document.body) {
-        searchInputRef.current.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
       }
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   return (
@@ -67,27 +73,27 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
           <Input
             ref={searchInputRef}
             type="text"
-            placeholder="Search for a city..."
+            placeholder="Search for a city... (Press '/' to focus)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => searchHistory.length > 0 && setIsHistoryOpen(true)}
-            className="pr-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
-            // removed autofocus attribute to avoid conflicts
+            className="pr-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
           />
           {query && (
-            <button
+            <Button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              onClick={() => setQuery("")}
+              variant="ghost"
+              size="sm"
+              className="absolute right-12 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={handleClear}
             >
-              ×
-            </button>
+              <X className="h-4 w-4" />
+            </Button>
           )}
+          <Button type="submit" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-8">
+            <Search className="h-4 w-4" />
+          </Button>
         </div>
-        <Button type="submit">
-          <Search className="h-4 w-4 mr-2" />
-          Search
-        </Button>
       </form>
 
       {/* Search History Dropdown */}

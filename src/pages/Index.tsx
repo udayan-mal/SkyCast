@@ -12,6 +12,8 @@ import { LoadingState } from "@/components/LoadingState";
 import { WeatherContent } from "@/components/WeatherContent";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { FavoriteLocations } from "@/components/FavoriteLocations";
+import { LastUpdated } from "@/components/LastUpdated";
 
 const Index = () => {
   const isDarkMode = useThemeEffect();
@@ -22,8 +24,10 @@ const Index = () => {
     currentWeather,
     forecast,
     geoError,
+    lastFetch,
     fetchWeatherForCity,
-    fetchWeatherForLocation
+    fetchWeatherForLocation,
+    refreshWeatherData
   } = useWeatherData();
 
   // Load default city if available
@@ -48,7 +52,7 @@ const Index = () => {
   return (
     <div className={`min-h-screen transition-colors duration-500 weather-pattern ${pageBackground}`}>
       <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Header />
+        <Header onUnitChange={refreshWeatherData} />
 
         <SearchBar onSearch={handleSearch} />
 
@@ -58,12 +62,20 @@ const Index = () => {
           {loading ? (
             <LoadingState />
           ) : currentWeather ? (
-            <WeatherContent 
-              currentWeather={currentWeather} 
-              forecast={forecast} 
-            />
+            <>
+              {lastFetch > 0 && (
+                <LastUpdated timestamp={lastFetch} />
+              )}
+              <WeatherContent 
+                currentWeather={currentWeather} 
+                forecast={forecast} 
+              />
+            </>
           ) : (
-            <EmptyState onGetLocation={fetchWeatherForLocation} />
+            <>
+              <EmptyState onGetLocation={fetchWeatherForLocation} />
+              <FavoriteLocations onLocationSelect={handleSearch} />
+            </>
           )}
         </main>
 

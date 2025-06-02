@@ -1,4 +1,6 @@
 
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import CurrentWeather from "@/components/CurrentWeather";
 import { ForecastSection } from "@/components/ForecastSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,8 +12,23 @@ interface WeatherContentProps {
 }
 
 export const WeatherContent = ({ currentWeather, forecast }: WeatherContentProps) => {
+  const handleBack = () => {
+    window.location.reload(); // Simple back functionality
+  };
+
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleBack}
+        className="mb-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        New Search
+      </Button>
+
       {/* Current Weather */}
       <CurrentWeather data={currentWeather} />
       

@@ -7,14 +7,18 @@ import { UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Header = () => {
+interface HeaderProps {
+  onUnitChange?: () => void;
+}
+
+export const Header = ({ onUnitChange }: HeaderProps) => {
   const { user } = useAuth();
   
   return (
     <header className="flex justify-between items-center mb-8">
       <Logo />
       <div className="flex items-center gap-2">
-        <UnitToggle />
+        <UnitToggle onUnitChange={onUnitChange} />
         <ThemeToggle />
         {!user ? (
           <Button variant="outline" size="sm" asChild>
