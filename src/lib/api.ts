@@ -23,16 +23,26 @@ export const fetchLocationByIP = async () => {
 // Use Supabase Edge Function as proxy for OpenWeatherMap API
 const callWeatherProxy = async (endpoint: string, params: string) => {
   try {
-    const { data, error } = await supabase.functions.invoke('weather-proxy', {
-      body: JSON.stringify({ endpoint, params })
+    // Use the supabase.functions.invoke with proper URL
+    const url = `https://xhztnomgjzvzmapdflgt.supabase.co/functions/v1/weather-proxy?endpoint=${endpoint}&params=${encodeURIComponent(params)}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${supabase.supabaseKey}`,
+        'apikey': supabase.supabaseKey,
+      },
     });
 
-    if (error) {
-      console.error('Edge function error:', error);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Edge function error:', response.status, errorText);
       throw new Error('Failed to fetch weather data');
     }
 
-    if (data.error) {
+    const data = await response.json();
+
+    if (data && data.error) {
       throw new Error(data.error);
     }
 
