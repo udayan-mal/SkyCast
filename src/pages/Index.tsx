@@ -73,7 +73,10 @@ const Index = () => {
             </>
           ) : (
             <>
-              <EmptyState onGetLocation={fetchWeatherForLocation} />
+              <EmptyState 
+                onGetLocation={fetchWeatherForLocation} 
+                onSearch={handleSearch}
+              />
               <FavoriteLocations onLocationSelect={handleSearch} />
             </>
           )}

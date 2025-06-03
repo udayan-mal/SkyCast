@@ -4,9 +4,16 @@ import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
   onGetLocation: () => void;
+  onSearch?: (city: string) => void;
 }
 
-export default function EmptyState({ onGetLocation }: EmptyStateProps) {
+export default function EmptyState({ onGetLocation, onSearch }: EmptyStateProps) {
+  const handleTryNewYork = () => {
+    if (onSearch) {
+      onSearch("New York");
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in">
       <div className="bg-blue-100 dark:bg-blue-900/30 w-20 h-20 rounded-full flex items-center justify-center mb-6">
@@ -21,7 +28,7 @@ export default function EmptyState({ onGetLocation }: EmptyStateProps) {
           <MapPin className="w-4 h-4" />
           Use my location
         </Button>
-        <Button onClick={() => {}} className="flex gap-2">
+        <Button onClick={handleTryNewYork} className="flex gap-2">
           <Search className="w-4 h-4" />
           Try "New York"
         </Button>
