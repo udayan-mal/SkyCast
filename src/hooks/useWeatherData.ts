@@ -67,6 +67,8 @@ export const useWeatherData = () => {
   };
 
   const fetchWeatherForLocation = async () => {
+    console.log('Attempting to get user location...');
+    
     if ("geolocation" in navigator) {
       setLoading(true);
       setGeoError(null);
@@ -75,7 +77,7 @@ export const useWeatherData = () => {
       const geoTimeout = setTimeout(() => {
         console.log('Geolocation timeout, trying IP fallback');
         handleGeolocationFallback();
-      }, 10000);
+      }, 8000); // Reduced timeout to 8 seconds
       
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -119,10 +121,12 @@ export const useWeatherData = () => {
             );
             
             setLastFetch(Date.now());
+            toast.success(`Weather loaded for ${weatherData.name}`);
             
           } catch (error) {
             console.error("Error fetching weather by location:", error);
             toast.error("Failed to fetch weather data for your location");
+            handleGeolocationFallback();
           } finally {
             setLoading(false);
           }
@@ -130,15 +134,34 @@ export const useWeatherData = () => {
         (error) => {
           clearTimeout(geoTimeout);
           console.error("Geolocation error:", error);
+          let errorMessage = "Unable to access your location. ";
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += "Location access was denied.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMessage += "Location request timed out.";
+              break;
+            default:
+              errorMessage += "An unknown error occurred.";
+              break;
+          }
+          
+          setGeoError(errorMessage);
           handleGeolocationFallback();
         },
         { 
           enableHighAccuracy: false,
-          timeout: 8000, 
+          timeout: 6000, 
           maximumAge: 60000
         }
       );
     } else {
+      console.log('Geolocation not supported, using IP fallback');
       handleGeolocationFallback();
     }
   };
@@ -146,6 +169,7 @@ export const useWeatherData = () => {
   const handleGeolocationFallback = async () => {
     console.log('Trying IP-based location fallback');
     try {
+      setLoading(true);
       const ipLocation = await fetchLocationByIP();
       console.log('IP location:', ipLocation);
       
@@ -159,6 +183,7 @@ export const useWeatherData = () => {
       console.error('IP geolocation fallback failed:', error);
       setGeoError("Unable to detect your location automatically. Please search for your city manually.");
       toast.error("Please search for your city manually or enable location permissions.");
+    } finally {
       setLoading(false);
     }
   };

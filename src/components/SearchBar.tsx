@@ -16,6 +16,11 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   const { searchHistory, addToHistory } = useSearchHistory();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Log search history for debugging
+  useEffect(() => {
+    console.log('SearchBar: Current search history:', searchHistory);
+  }, [searchHistory]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) {
@@ -23,6 +28,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
       return;
     }
     
+    console.log('SearchBar: Searching for city:', query);
     onSearch(query);
     addToHistory(query);
     setQuery("");
@@ -36,8 +42,17 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   };
 
   const handleHistoryItemClick = (city: string) => {
+    console.log('SearchBar: Selected from history:', city);
     onSearch(city);
+    setQuery("");
     setIsHistoryOpen(false);
+  };
+
+  const handleInputFocus = () => {
+    console.log('SearchBar: Input focused, search history length:', searchHistory.length);
+    if (searchHistory.length > 0) {
+      setIsHistoryOpen(true);
+    }
   };
 
   // Close history dropdown when clicking outside
@@ -76,7 +91,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
             placeholder="Search for a city... (Press '/' to focus)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => searchHistory.length > 0 && setIsHistoryOpen(true)}
+            onFocus={handleInputFocus}
             className="pr-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
           />
           {query && (
@@ -103,7 +118,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b">
-            Recent Searches
+            Recent Searches ({searchHistory.length})
           </div>
           <ul>
             {searchHistory.map((city, index) => (
@@ -116,6 +131,13 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-2 text-xs text-gray-500">
+          Search History: {searchHistory.length} items
         </div>
       )}
     </div>

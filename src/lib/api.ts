@@ -1,8 +1,6 @@
 
 import { toast } from "sonner";
-
-const API_KEY = "313e5b04beb744a18ace8439054363ba";
-const BASE_URL = "https://api.openweathermap.org/data/2.5";
+import { supabase } from "@/integrations/supabase/client";
 
 // Fallback geolocation using IP
 export const fetchLocationByIP = async () => {
@@ -22,96 +20,63 @@ export const fetchLocationByIP = async () => {
   }
 };
 
+// Use Supabase Edge Function as proxy for OpenWeatherMap API
+const callWeatherProxy = async (endpoint: string, params: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('weather-proxy', {
+      body: JSON.stringify({ endpoint, params })
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error('Failed to fetch weather data');
+    }
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Weather proxy call failed:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Network error. Please check your internet connection.');
+  }
+};
+
 export const fetchWeatherByCity = async (city: string, unit: string = 'metric') => {
   try {
-    const response = await fetch(
-      `${BASE_URL}/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=${unit}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      }
-    );
+    const params = `q=${encodeURIComponent(city)}&units=${unit}`;
+    const data = await callWeatherProxy('weather', params);
     
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error("City not found. Please check the spelling and try again.");
-      } else if (response.status === 401) {
-        throw new Error("Invalid API key. Please check your configuration.");
-      } else if (response.status === 429) {
-        throw new Error("Too many requests. Please try again later.");
-      }
-      throw new Error(`Failed to fetch weather data (${response.status})`);
-    }
-    
-    const data = await response.json();
     console.log('Weather data fetched:', data);
     return data;
   } catch (error) {
     console.error("Error fetching current weather:", error);
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Network error. Please check your internet connection.');
-    }
     throw error;
   }
 };
 
 export const fetchWeatherByCoords = async (lat: number, lon: number, unit: string = 'metric') => {
   try {
-    const response = await fetch(
-      `${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${unit}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      }
-    );
+    const params = `lat=${lat}&lon=${lon}&units=${unit}`;
+    const data = await callWeatherProxy('weather', params);
     
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Invalid API key. Please check your configuration.");
-      } else if (response.status === 429) {
-        throw new Error("Too many requests. Please try again later.");
-      }
-      throw new Error(`Failed to fetch weather data (${response.status})`);
-    }
-    
-    const data = await response.json();
     console.log('Weather data by coordinates fetched:', data);
     return data;
   } catch (error) {
     console.error("Error fetching current weather by coords:", error);
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Network error. Please check your internet connection.');
-    }
     throw error;
   }
 };
 
 export const fetchForecast = async (lat: number, lon: number, unit: string = 'metric') => {
   try {
-    const response = await fetch(
-      `${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${unit}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      }
-    );
+    const params = `lat=${lat}&lon=${lon}&units=${unit}`;
+    const data = await callWeatherProxy('forecast', params);
     
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Invalid API key for forecast data.");
-      } else if (response.status === 429) {
-        throw new Error("Too many forecast requests. Please try again later.");
-      }
-      throw new Error(`Failed to fetch forecast data (${response.status})`);
-    }
-    
-    const data = await response.json();
     console.log('Forecast data fetched:', data);
     
     // Process the forecast data to get daily forecasts
@@ -122,9 +87,6 @@ export const fetchForecast = async (lat: number, lon: number, unit: string = 'me
     };
   } catch (error) {
     console.error("Error fetching forecast:", error);
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Network error while fetching forecast. Please check your internet connection.');
-    }
     throw error;
   }
 };
