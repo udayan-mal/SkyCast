@@ -29,8 +29,8 @@ const callWeatherProxy = async (endpoint: string, params: string) => {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${supabase.supabaseKey}`,
-        'apikey': supabase.supabaseKey,
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoenRub21nanp2em1hcGRmbGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNTgyNjQsImV4cCI6MjA2MjgzNDI2NH0.Q2lwr9xG2RXBMdx-Q8bHMtm7QW63q3vBhzakFM3mFCc`,
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoenRub21nanp2em1hcGRmbGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNTgyNjQsImV4cCI6MjA2MjgzNDI2NH0.Q2lwr9xG2RXBMdx-Q8bHMtm7QW63q3vBhzakFM3mFCc',
       },
     });
 
