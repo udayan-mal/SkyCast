@@ -3,16 +3,26 @@ import Logo from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import UnitToggle from "@/components/UnitToggle";
 import { Button } from "@/components/ui/button";
-import { UserRound } from "lucide-react";
+import { UserRound, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface HeaderProps {
   onUnitChange?: () => void;
 }
 
 export const Header = ({ onUnitChange }: HeaderProps) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out successfully!");
+    } catch (error) {
+      toast.error("Error signing out");
+    }
+  };
   
   return (
     <header className="flex justify-between items-center mb-8">
@@ -28,10 +38,15 @@ export const Header = ({ onUnitChange }: HeaderProps) => {
             </Link>
           </Button>
         ) : (
-          <Button variant="outline" size="sm" disabled>
-            <UserRound className="h-4 w-4 mr-2" />
-            {user.email?.split('@')[0]}
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {user.email?.split('@')[0]}
+            </span>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         )}
       </div>
     </header>

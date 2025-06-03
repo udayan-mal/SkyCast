@@ -8,14 +8,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import Logo from "@/components/Logo";
-import { Loader } from "lucide-react";
+import { Loader, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<any>(null);
+  const [showEmailConfirmationAlert, setShowEmailConfirmationAlert] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,31 +29,48 @@ export default function Auth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) {
+        navigate("/");
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setShowEmailConfirmationAlert(false);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        toast.error(error.message);
+        // Check if it's an email confirmation issue
+        if (error.message.includes("email not confirmed") || error.message.includes("Email not confirmed")) {
+          setShowEmailConfirmationAlert(true);
+          toast.error("Please check your email and click the confirmation link before signing in.");
+        } else if (error.message.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password. Please check your credentials and try again.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+      
+      if (data.user && !data.user.email_confirmed_at) {
+        setShowEmailConfirmationAlert(true);
+        toast.error("Please check your email and click the confirmation link before signing in.");
         return;
       }
       
       toast.success("Signed in successfully!");
-      navigate("/");
     } catch (error) {
       console.error("Error signing in:", error);
-      toast.error("An unexpected error occurred");
+      toast.error("An unexpected error occurred during sign in");
     } finally {
       setLoading(false);
     }
@@ -60,24 +79,63 @@ export default function Auth() {
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setShowEmailConfirmationAlert(false);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        }
+      });
+
+      if (error) {
+        if (error.message.includes("User already registered")) {
+          toast.error("An account with this email already exists. Please sign in instead.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+      
+      if (data.user && !data.user.email_confirmed_at) {
+        setShowEmailConfirmationAlert(true);
+        toast.success("Account created! Please check your email for a confirmation link.");
+      } else {
+        toast.success("Account created successfully!");
+      }
+    } catch (error) {
+      console.error("Error signing up:", error);
+      toast.error("An unexpected error occurred during sign up");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    if (!email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        }
       });
 
       if (error) {
         toast.error(error.message);
-        return;
+      } else {
+        toast.success("Confirmation email sent! Please check your inbox.");
       }
-      
-      toast.success("Signed up successfully! Please check your email for confirmation.");
     } catch (error) {
-      console.error("Error signing up:", error);
-      toast.error("An unexpected error occurred");
-    } finally {
-      setLoading(false);
+      console.error("Error resending confirmation:", error);
+      toast.error("Failed to resend confirmation email");
     }
   }
 
@@ -94,6 +152,25 @@ export default function Auth() {
           <CardTitle className="text-2xl mt-4">Welcome to SkyView</CardTitle>
           <CardDescription>Sign in or create an account to save your preferences</CardDescription>
         </CardHeader>
+        
+        {showEmailConfirmationAlert && (
+          <div className="px-6 pb-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                Please check your email and click the confirmation link to activate your account.
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-xs p-0 h-auto ml-2"
+                  onClick={resendConfirmation}
+                >
+                  Resend confirmation email
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid grid-cols-2 w-full">
@@ -119,9 +196,6 @@ export default function Auth() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <Button variant="link" size="sm" className="text-xs p-0 h-auto">
-                      Forgot password?
-                    </Button>
                   </div>
                   <Input 
                     id="password" 
@@ -130,6 +204,7 @@ export default function Auth() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={6}
                   />
                 </div>
               </CardContent>
@@ -173,6 +248,7 @@ export default function Auth() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={6}
                   />
                   <p className="text-sm text-muted-foreground">
                     Password must be at least 6 characters long
