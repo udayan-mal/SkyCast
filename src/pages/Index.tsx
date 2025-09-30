@@ -54,7 +54,7 @@ const Index = () => {
       <div className="container max-w-4xl mx-auto py-8 px-4">
         <Header onUnitChange={refreshWeatherData} />
 
-        <SearchBar onSearch={handleSearch} />
+  <SearchBar onSearch={handleSearch} onUseCurrentLocation={fetchWeatherForLocation} />
 
         <GeolocationAlert error={geoError} />
 

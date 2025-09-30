@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const STORAGE_KEY_PREFIX = 'skycast:searchHistory';
 const LEGACY_KEY = 'searchHistory';
+const HISTORY_UPDATED_EVENT = 'skycast:searchHistoryUpdated';
 
 const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
@@ -33,6 +34,12 @@ const writeHistory = (key: string, history: string[], isGuest: boolean) => {
     if (isGuest) {
       window.localStorage.setItem(LEGACY_KEY, JSON.stringify(history));
     }
+    window.dispatchEvent(new CustomEvent(HISTORY_UPDATED_EVENT, {
+      detail: {
+        key,
+        length: history.length,
+      }
+    }));
   } catch (error) {
     console.error('Failed to persist search history:', error);
   }
@@ -59,6 +66,23 @@ export const useSearchHistory = () => {
     setSearchHistory(history);
     setIsLoading(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+
+    const handleHistoryChange = (event: Event) => {
+      const detailKey = (event as CustomEvent<{ key: string }>).detail?.key;
+      const currentKey = storageKeyRef.current;
+
+      if (!detailKey || detailKey === currentKey) {
+        const history = readHistory(currentKey, !user);
+        setSearchHistory(history);
+      }
+    };
+
+    window.addEventListener(HISTORY_UPDATED_EVENT, handleHistoryChange);
+    return () => window.removeEventListener(HISTORY_UPDATED_EVENT, handleHistoryChange);
+  }, [user]);
 
   const persistHistory = (history: string[]) => {
     setSearchHistory(history);

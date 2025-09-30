@@ -18,6 +18,7 @@ export const fetchLocationByIP = async () => {
 };
 
 const OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5";
+const OPENWEATHER_GEO_BASE_URL = "https://api.openweathermap.org/geo/1.0";
 type ForecastProvider = 'openweather' | 'openmeteo';
 const DEFAULT_OPENWEATHER_API_KEY = "313e5b04beb744a18ace8439054363ba";
 const ENV_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY?.trim();
@@ -52,7 +53,10 @@ const callWeatherApi = async (endpoint: string, params: Record<string, string | 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenWeather error:', response.status, errorText);
-      const error: WeatherApiError = new Error('Failed to fetch weather data');
+      const errorMessage = response.status === 401
+        ? 'Missing or invalid OpenWeather API key. Add VITE_OPENWEATHER_API_KEY to your .env file.'
+        : 'Failed to fetch weather data';
+      const error: WeatherApiError = new Error(errorMessage);
       error.status = response.status;
       try {
         error.details = JSON.parse(errorText);
@@ -76,6 +80,66 @@ const callWeatherApi = async (endpoint: string, params: Record<string, string | 
     }
     throw new Error('Network error. Please check your internet connection.');
   }
+};
+
+export interface CitySuggestion {
+  id: string;
+  name: string;
+  state?: string;
+  country: string;
+  lat: number;
+  lon: number;
+}
+
+const citySuggestionCache = new Map<string, CitySuggestion[]>();
+
+export const fetchCitySuggestions = async (query: string, limit: number = 7): Promise<CitySuggestion[]> => {
+  const trimmed = query.trim();
+  if (!trimmed || trimmed.length < 2) {
+    return [];
+  }
+
+  const normalizedKey = `${trimmed.toLowerCase()}::${limit}`;
+  const cached = citySuggestionCache.get(normalizedKey);
+  if (cached) {
+    return cached;
+  }
+
+  if (!OPENWEATHER_API_KEY) {
+    throw new Error('OpenWeather API key is not configured.');
+  }
+
+  const params = new URLSearchParams({
+    q: trimmed,
+    limit: String(limit),
+    appid: OPENWEATHER_API_KEY,
+  });
+
+  const response = await fetch(`${OPENWEATHER_GEO_BASE_URL}/direct?${params.toString()}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('OpenWeather geocoding error:', response.status, errorText);
+    throw new Error('Failed to fetch city suggestions');
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  const suggestions: CitySuggestion[] = data
+    .filter((item: any) => item && item.name && item.lat != null && item.lon != null)
+    .map((item: any, index: number) => ({
+      id: `${item.lat},${item.lon},${index}`,
+      name: item.name,
+      state: item.state ?? undefined,
+      country: item.country,
+      lat: item.lat,
+      lon: item.lon,
+    }));
+
+  citySuggestionCache.set(normalizedKey, suggestions);
+  return suggestions;
 };
 
 export const fetchWeatherByCity = async (city: string, unit: string = 'metric') => {

@@ -6,7 +6,7 @@ SkyCast is a modern weather intelligence dashboard that delivers current conditi
 
 - **Current weather snapshot** with temperature, humidity, wind, visibility, and sunrise/sunset times.
 - **7-day forecast carousel** powered by OpenWeather and automatically backed up by Open-Meteo if the primary API fails.
-- **Search history & favorites** so you can quickly revisit recent locations or pin your go-to cities.
+- **Smart search assistant** with live city suggestions, recent history, and a quick "use my location" shortcut.
 - **Theme, unit, and layout preferences** persisted locally for a personalized experience.
 - **Graceful loading, error, and geolocation states** to guide users through every scenario.
 
