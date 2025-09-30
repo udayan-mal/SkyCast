@@ -1,73 +1,113 @@
-# Welcome to your Lovable project
+# SkyCast
 
-## Project info
+SkyCast is a modern weather intelligence dashboard that delivers current conditions, a 7-day outlook, and helpful travel insights for any city in the world. It pairs a sleek, responsive UI with reliable weather providers so your forecasts stay accurate even when one API is unavailable.
 
-**URL**: https://lovable.dev/projects/e8e8d7f8-e4bf-40ce-a1eb-4dd28de7f8f2
+## ✨ Features
 
-## How can I edit this code?
+- **Current weather snapshot** with temperature, humidity, wind, visibility, and sunrise/sunset times.
+- **7-day forecast carousel** powered by OpenWeather and automatically backed up by Open-Meteo if the primary API fails.
+- **Search history & favorites** so you can quickly revisit recent locations or pin your go-to cities.
+- **Theme, unit, and layout preferences** persisted locally for a personalized experience.
+- **Graceful loading, error, and geolocation states** to guide users through every scenario.
 
-There are several ways of editing your application.
+## 🧰 Tech Stack
 
-**Use Lovable**
+- [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) on top of [Vite](https://vitejs.dev/)
+- [Tailwind CSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/) for styled, accessible components
+- [TanStack Query](https://tanstack.com/query/latest) for data fetching and caching
+- [Supabase](https://supabase.com/) types prepared for future authentication (currently using local storage)
+- Node.js backend scaffold (see `server/`) for upcoming JWT authentication services
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e8e8d7f8-e4bf-40ce-a1eb-4dd28de7f8f2) and start prompting.
+## 🚀 Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js **18 LTS** or later
+- npm **9+** (bundled with Node)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+# Clone the repository
+git clone https://github.com/<your-username>/skycast.git
 
-Follow these steps:
+# Move into the project directory
+cd skycast
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Install dependencies
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Environment Variables
 
-# Step 3: Install the necessary dependencies.
-npm i
+Create a copy of `.env.example` and provide your own API keys:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+| Variable | Description |
+| --- | --- |
+| `VITE_OPENWEATHER_API_KEY` | Your OpenWeather API key. Create one at [openweathermap.org](https://openweathermap.org/api). |
+
+An optional `VITE_OPEN_METEO_API_URL` override is supported if you self-host the fallback service.
+
+### Development
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The development server runs on http://localhost:5173 by default and supports hot module reloading.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Linting & Quality Checks
 
-**Use GitHub Codespaces**
+```bash
+npm run lint
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Production Build & Preview
 
-## What technologies are used for this project?
+```bash
+npm run build
+npm run preview
+```
 
-This project is built with:
+The production output lives in the `dist/` directory.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📁 Project Structure
 
-## How can I deploy this project?
+```
+SkyCast/
+├── public/              # Static assets
+├── src/
+│   ├── components/      # UI components (shadcn/ui based)
+│   ├── hooks/           # Custom hooks for auth, weather, theming, etc.
+│   ├── pages/           # Route-level views
+│   ├── integrations/    # External clients (e.g., Supabase)
+│   └── lib/             # API utilities & helpers
+├── server/              # Node/Express scaffold for upcoming JWT auth
+├── supabase/            # Supabase configuration & migrations
+└── README.md
+```
 
-Simply open [Lovable](https://lovable.dev/projects/e8e8d7f8-e4bf-40ce-a1eb-4dd28de7f8f2) and click on Share -> Publish.
+## 🌦 Data Providers
 
-## Can I connect a custom domain to my Lovable project?
+- [OpenWeather](https://openweathermap.org/) for primary current conditions and forecast data
+- [Open-Meteo](https://open-meteo.com/) as the automatic 7-day fallback provider
 
-Yes, you can!
+## 🛣 Roadmap
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- Add secure JWT-based authentication backed by the `server/` service
+- Sync favorites and search history across devices
+- Extend travel guidance with severe weather alerts
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🤝 Contributing
+
+Issues and pull requests are welcome! If you have ideas for features or improvements, open an issue to discuss them before submitting substantial changes.
+
+## 📄 License
+
+No license has been specified yet. Add a `LICENSE` file before distributing or making the project public.

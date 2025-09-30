@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -22,129 +21,80 @@ export const DEFAULT_PREFERENCES = {
   analytics_enabled: true,
 };
 
+const STORAGE_KEY_PREFIX = 'skycast:weatherPreferences';
+const LEGACY_KEY = 'weatherPreferences';
+
+const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const getStorageKey = (userId?: string | null) => {
+  if (!userId) return `${STORAGE_KEY_PREFIX}:guest`;
+  return `${STORAGE_KEY_PREFIX}:${userId}`;
+};
+
+const readPreferences = (userId?: string | null): WeatherProfile => {
+  if (!isBrowser()) return DEFAULT_PREFERENCES;
+  const key = getStorageKey(userId);
+
+  try {
+    const raw = window.localStorage.getItem(key) ?? (!userId ? window.localStorage.getItem(LEGACY_KEY) : null);
+    if (!raw) return DEFAULT_PREFERENCES;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_PREFERENCES, ...parsed };
+  } catch (error) {
+    console.error('Failed to read weather preferences:', error);
+    return DEFAULT_PREFERENCES;
+  }
+};
+
+const writePreferences = (profile: WeatherProfile, userId?: string | null) => {
+  if (!isBrowser()) return;
+  try {
+    const key = getStorageKey(userId);
+    window.localStorage.setItem(key, JSON.stringify(profile));
+    if (!userId) {
+      window.localStorage.setItem(LEGACY_KEY, JSON.stringify(profile));
+    }
+  } catch (error) {
+    console.error('Failed to persist weather preferences:', error);
+  }
+};
+
 export const useWeatherProfile = () => {
-  const [profile, setProfile] = useState<WeatherProfile>(DEFAULT_PREFERENCES);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const [profile, setProfile] = useState<WeatherProfile>(() => readPreferences(user?.id));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for locally stored preferences first
-    const localPreferences = localStorage.getItem('weatherPreferences');
-    if (localPreferences) {
-      try {
-        const parsedPreferences = JSON.parse(localPreferences);
-        setProfile(parsedPreferences);
-      } catch (error) {
-        console.error('Error parsing local preferences:', error);
-      }
-    }
-    
-    // If user is authenticated, fetch from Supabase
-    if (user) {
-      fetchUserProfile(user.id);
-    } else {
+    if (!isBrowser()) {
+      setProfile(DEFAULT_PREFERENCES);
       setLoading(false);
+      return;
     }
-  }, [user]);
 
-  const fetchUserProfile = async (id: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile', error);
-        // If the profile doesn't exist, create it
-        if (error.code === 'PGRST116') {
-          await createUserProfile(id);
-        } else {
-          setLoading(false);
-        }
-      } else if (data) {
-        setProfile(data);
-        // Save to local storage for offline access
-        localStorage.setItem('weatherPreferences', JSON.stringify(data));
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-      setLoading(false);
-    }
-  };
-
-  const createUserProfile = async (id: string) => {
-    try {
-      // Get local preferences to use as defaults if available
-      const localPrefs = localStorage.getItem('weatherPreferences');
-      const startingPrefs = localPrefs ? JSON.parse(localPrefs) : DEFAULT_PREFERENCES;
-      
-      const { error } = await supabase
-        .from('user_preferences')
-        .insert([{ 
-          user_id: id,
-          ...startingPrefs
-        }]);
-
-      if (error) {
-        console.error('Error creating user profile', error);
-        toast.error('Failed to create user profile');
-        setLoading(false);
-        return false;
-      }
-      
-      setProfile(startingPrefs);
-      setLoading(false);
-      return true;
-    } catch (error) {
-      console.error('Error in createUserProfile:', error);
-      setLoading(false);
-      return false;
-    }
-  };
+    setLoading(true);
+    const preferences = readPreferences(user?.id ?? undefined);
+    setProfile(preferences);
+    setLoading(false);
+  }, [user?.id]);
 
   const updateProfile = async (updates: Partial<WeatherProfile>) => {
     try {
-      // Always update local state and storage for immediate feedback
       const updatedProfile = { ...profile, ...updates };
       setProfile(updatedProfile);
-      localStorage.setItem('weatherPreferences', JSON.stringify(updatedProfile));
-      
-      // If user is logged in, update in Supabase
-      if (user) {
-        setLoading(true);
-        const { error } = await supabase
-          .from('user_preferences')
-          .update(updates)
-          .eq('user_id', user.id);
-
-        if (error) {
-          console.error('Error updating profile', error);
-          toast.error('Failed to update profile');
-          setLoading(false);
-          return false;
-        }
-
-        toast.success('Profile updated successfully');
-        setLoading(false);
-        return true;
-      }
-      
+      writePreferences(updatedProfile, user?.id ?? undefined);
+      toast.success('Preferences saved');
       return true;
     } catch (error) {
-      console.error('Error in updateProfile:', error);
-      setLoading(false);
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
       return false;
     }
   };
 
-  return { 
-    profile, 
-    loading, 
+  return {
+    profile,
+    loading,
     updateProfile,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
 };

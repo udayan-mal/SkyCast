@@ -1,7 +1,4 @@
 
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-
 // Fallback geolocation using IP
 export const fetchLocationByIP = async () => {
   try {
@@ -20,35 +17,60 @@ export const fetchLocationByIP = async () => {
   }
 };
 
-// Use Supabase Edge Function as proxy for OpenWeatherMap API
-const callWeatherProxy = async (endpoint: string, params: string) => {
+const OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5";
+type ForecastProvider = 'openweather' | 'openmeteo';
+const DEFAULT_OPENWEATHER_API_KEY = "313e5b04beb744a18ace8439054363ba";
+const ENV_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY?.trim();
+const OPENWEATHER_API_KEY = ENV_API_KEY && ENV_API_KEY.length > 0
+  ? ENV_API_KEY
+  : DEFAULT_OPENWEATHER_API_KEY;
+
+if (!OPENWEATHER_API_KEY) {
+  console.error("Missing OpenWeather API key. Set VITE_OPENWEATHER_API_KEY in your environment.");
+}
+
+type WeatherApiError = Error & { status?: number; details?: unknown };
+type ForecastResponse = { daily: any[]; provider: ForecastProvider };
+
+const callWeatherApi = async (endpoint: string, params: Record<string, string | number>) => {
   try {
-    // Use the supabase.functions.invoke with proper URL
-    const url = `https://xhztnomgjzvzmapdflgt.supabase.co/functions/v1/weather-proxy?endpoint=${endpoint}&params=${encodeURIComponent(params)}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoenRub21nanp2em1hcGRmbGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNTgyNjQsImV4cCI6MjA2MjgzNDI2NH0.Q2lwr9xG2RXBMdx-Q8bHMtm7QW63q3vBhzakFM3mFCc`,
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoenRub21nanp2em1hcGRmbGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNTgyNjQsImV4cCI6MjA2MjgzNDI2NH0.Q2lwr9xG2RXBMdx-Q8bHMtm7QW63q3vBhzakFM3mFCc',
-      },
+    if (!OPENWEATHER_API_KEY) {
+      throw new Error('OpenWeather API key is not configured.');
+    }
+
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, String(value));
+      }
     });
+    searchParams.set('appid', OPENWEATHER_API_KEY);
+
+    const url = `${OPENWEATHER_BASE_URL}/${endpoint}?${searchParams.toString()}`;
+    const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Edge function error:', response.status, errorText);
-      throw new Error('Failed to fetch weather data');
+      console.error('OpenWeather error:', response.status, errorText);
+      const error: WeatherApiError = new Error('Failed to fetch weather data');
+      error.status = response.status;
+      try {
+        error.details = JSON.parse(errorText);
+      } catch {
+        error.details = errorText;
+      }
+      throw error;
     }
 
     const data = await response.json();
 
-    if (data && data.error) {
-      throw new Error(data.error);
+    if (data && (data.cod && Number(data.cod) !== 200) && data.message) {
+      throw new Error(data.message);
     }
 
     return data;
   } catch (error) {
-    console.error('Weather proxy call failed:', error);
+    console.error('Weather API call failed:', error);
     if (error instanceof Error) {
       throw error;
     }
@@ -58,8 +80,10 @@ const callWeatherProxy = async (endpoint: string, params: string) => {
 
 export const fetchWeatherByCity = async (city: string, unit: string = 'metric') => {
   try {
-    const params = `q=${encodeURIComponent(city)}&units=${unit}`;
-    const data = await callWeatherProxy('weather', params);
+    const data = await callWeatherApi('weather', {
+      q: city,
+      units: unit,
+    });
     
     console.log('Weather data fetched:', data);
     return data;
@@ -71,8 +95,11 @@ export const fetchWeatherByCity = async (city: string, unit: string = 'metric') 
 
 export const fetchWeatherByCoords = async (lat: number, lon: number, unit: string = 'metric') => {
   try {
-    const params = `lat=${lat}&lon=${lon}&units=${unit}`;
-    const data = await callWeatherProxy('weather', params);
+    const data = await callWeatherApi('weather', {
+      lat,
+      lon,
+      units: unit,
+    });
     
     console.log('Weather data by coordinates fetched:', data);
     return data;
@@ -82,95 +109,106 @@ export const fetchWeatherByCoords = async (lat: number, lon: number, unit: strin
   }
 };
 
-export const fetchForecast = async (lat: number, lon: number, unit: string = 'metric') => {
-  try {
-    const params = `lat=${lat}&lon=${lon}&units=${unit}`;
-    const data = await callWeatherProxy('forecast', params);
-    
-    console.log('Forecast data fetched:', data);
-    
-    // Process the forecast data to get daily forecasts
-    const dailyForecasts = processDailyForecasts(data);
-    
-    return {
-      daily: dailyForecasts
-    };
-  } catch (error) {
-    console.error("Error fetching forecast:", error);
-    throw error;
-  }
+const mapOpenMeteoWeatherCode = (code: number): string => {
+  if (code === 0) return 'Clear';
+  if ([1, 2, 3].includes(code)) return 'Clouds';
+  if ([45, 48].includes(code)) return 'Fog';
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'Rain';
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return 'Snow';
+  if ([95, 96, 99].includes(code)) return 'Thunderstorm';
+  return 'Clouds';
 };
 
-// Helper function to process forecast data into daily forecasts
-const processDailyForecasts = (forecastData: any) => {
-  const dailyMap = new Map();
-  
-  // Group forecast data by day
-  forecastData.list.forEach((item: any) => {
-    const date = new Date(item.dt * 1000);
-    const day = date.toISOString().split('T')[0];
-    
-    if (!dailyMap.has(day)) {
-      dailyMap.set(day, {
-        temps: [],
-        conditions: [],
-        dt: item.dt,
-        humidity: [],
-        wind: [],
-        precipitation: []
-      });
-    }
-    
-    const dayData = dailyMap.get(day);
-    dayData.temps.push(item.main.temp);
-    dayData.conditions.push(item.weather[0].main);
-    dayData.humidity.push(item.main.humidity);
-    dayData.wind.push(item.wind.speed);
-    dayData.precipitation.push(item.pop || 0); // Probability of precipitation
+const fetchForecastFromOpenMeteo = async (lat: number, lon: number, unit: string): Promise<ForecastResponse> => {
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    daily: 'temperature_2m_max,temperature_2m_min,weathercode,wind_speed_10m_max,precipitation_probability_max,relative_humidity_2m_max',
+    timezone: 'auto',
   });
-  
-  // For each day, compute min/max temps and most common condition
-  const dailyForecasts = Array.from(dailyMap.entries()).map(([_, data]: [string, any]) => {
+
+  if (unit === 'imperial') {
+    params.set('temperature_unit', 'fahrenheit');
+    params.set('wind_speed_unit', 'mph');
+  } else {
+    params.set('temperature_unit', 'celsius');
+    params.set('wind_speed_unit', 'kmh');
+  }
+
+  const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Open-Meteo error:', response.status, errorText);
+    throw new Error('Failed to fetch fallback forecast data');
+  }
+
+  const data = await response.json();
+
+  if (!data?.daily?.time) {
+    throw new Error('Unexpected Open-Meteo forecast format');
+  }
+
+  const daily = data.daily.time.map((date: string, index: number) => {
+    const timestamp = Math.floor(new Date(date).getTime() / 1000);
+    const rawWind = data.daily.wind_speed_10m_max?.[index] ?? null;
+    const windSpeed = rawWind == null ? null : unit === 'metric' ? rawWind / 3.6 : rawWind; // convert km/h -> m/s for metric
+    const precipitationProb = data.daily.precipitation_probability_max?.[index] ?? null;
     return {
-      dt: data.dt,
+      dt: timestamp,
       temp: {
-        min: Math.min(...data.temps),
-        max: Math.max(...data.temps)
+        min: data.daily.temperature_2m_min[index],
+        max: data.daily.temperature_2m_max[index],
       },
       weather: [
         {
-          main: getMostFrequent(data.conditions)
-        }
+          main: mapOpenMeteoWeatherCode(data.daily.weathercode[index]),
+        },
       ],
-      humidity: Math.round(getAverage(data.humidity)),
-      wind_speed: getAverage(data.wind),
-      pop: Math.round(getAverage(data.precipitation) * 100) // Convert to percentage
+      humidity: data.daily.relative_humidity_2m_max?.[index] ?? null,
+      wind_speed: windSpeed,
+      pop: precipitationProb == null ? null : precipitationProb / 100,
     };
   });
-  
-  // Limit to 7 days
-  return dailyForecasts.slice(0, 7);
+
+  return { daily: daily.slice(0, 7), provider: 'openmeteo' };
 };
 
-// Helper function to get most frequent item in array
-const getMostFrequent = (arr: any[]) => {
-  const counts: { [key: string]: number } = {};
-  let maxItem = arr[0];
-  let maxCount = 1;
-  
-  for (const item of arr) {
-    counts[item] = (counts[item] || 0) + 1;
-    if (counts[item] > maxCount) {
-      maxItem = item;
-      maxCount = counts[item];
+export const fetchForecast = async (lat: number, lon: number, unit: string = 'metric'): Promise<ForecastResponse> => {
+  try {
+    const data = await callWeatherApi('onecall', {
+      lat,
+      lon,
+      units: unit,
+      exclude: 'current,minutely,hourly,alerts',
+    });
+
+    if (!data?.daily || !Array.isArray(data.daily)) {
+      throw new Error('Unexpected forecast response format');
+    }
+
+    console.log('Forecast data fetched via OpenWeather One Call');
+
+    return {
+      daily: data.daily.slice(0, 7),
+      provider: 'openweather',
+    };
+  } catch (error) {
+    const status = (error as WeatherApiError)?.status;
+    console.warn('OpenWeather One Call failed, attempting Open-Meteo fallback', error);
+
+    if (status && status !== 401 && status !== 403) {
+      throw error;
+    }
+
+    try {
+  const fallbackData = await fetchForecastFromOpenMeteo(lat, lon, unit);
+  console.info('Forecast data fetched via Open-Meteo fallback');
+  return fallbackData;
+    } catch (fallbackError) {
+      console.error('Fallback forecast fetch failed:', fallbackError);
+      throw fallbackError;
     }
   }
-  
-  return maxItem;
-};
-
-// Helper function to get average of array
-const getAverage = (arr: number[]) => {
-  const sum = arr.reduce((a, b) => a + b, 0);
-  return sum / arr.length;
 };

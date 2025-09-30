@@ -9,9 +9,21 @@ export const useWeatherData = () => {
   const [loading, setLoading] = useState(false);
   const [currentWeather, setCurrentWeather] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
+  const [forecastProvider, setForecastProvider] = useState<string | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number>(0);
   const { profile } = useWeatherProfile();
+
+  const normalizeWindSpeed = (speed: number | null | undefined) => {
+    if (speed === null || speed === undefined) return null;
+    const value = profile.unit === 'metric' ? speed * 3.6 : speed;
+    return Math.round(value * 10) / 10;
+  };
+
+  const normalizePrecipitation = (pop: number | null | undefined) => {
+    if (pop === null || pop === undefined) return 0;
+    return pop <= 1 ? Math.round(pop * 100) : Math.round(pop);
+  };
 
   const fetchWeatherForCity = async (city: string) => {
     setLoading(true);
@@ -23,6 +35,13 @@ export const useWeatherData = () => {
       
       const { lat, lon } = weatherData.coord;
       const forecastData = await fetchForecast(lat, lon, profile.unit);
+
+      if (forecastProvider !== forecastData.provider) {
+        setForecastProvider(forecastData.provider);
+        if (forecastData.provider === 'openmeteo') {
+          toast.info('Using fallback forecast data (Open-Meteo).');
+        }
+      }
       
       setCurrentWeather({
         city: weatherData.name,
@@ -30,7 +49,7 @@ export const useWeatherData = () => {
         temperature: weatherData.main.temp,
         feelsLike: weatherData.main.feels_like,
         humidity: weatherData.main.humidity,
-        windSpeed: weatherData.wind.speed,
+        windSpeed: normalizeWindSpeed(weatherData.wind.speed) ?? 0,
         condition: weatherData.weather[0].main,
         description: weatherData.weather[0].description,
         sunrise: weatherData.sys.sunrise,
@@ -50,8 +69,8 @@ export const useWeatherData = () => {
           maxTemp: day.temp.max,
           condition: day.weather[0].main,
           humidity: day.humidity,
-          windSpeed: day.wind_speed,
-          precipitation: day.pop || 0
+          windSpeed: normalizeWindSpeed(day.wind_speed) ?? undefined,
+          precipitation: normalizePrecipitation(day.pop)
         }))
       );
 
@@ -88,6 +107,13 @@ export const useWeatherData = () => {
             
             const weatherData = await fetchWeatherByCoords(latitude, longitude, profile.unit);
             const forecastData = await fetchForecast(latitude, longitude, profile.unit);
+
+            if (forecastProvider !== forecastData.provider) {
+              setForecastProvider(forecastData.provider);
+              if (forecastData.provider === 'openmeteo') {
+                toast.info('Using fallback forecast data (Open-Meteo).');
+              }
+            }
             
             setCurrentWeather({
               city: weatherData.name,
@@ -95,7 +121,7 @@ export const useWeatherData = () => {
               temperature: weatherData.main.temp,
               feelsLike: weatherData.main.feels_like,
               humidity: weatherData.main.humidity,
-              windSpeed: weatherData.wind.speed,
+              windSpeed: normalizeWindSpeed(weatherData.wind.speed) ?? 0,
               condition: weatherData.weather[0].main,
               description: weatherData.weather[0].description,
               sunrise: weatherData.sys.sunrise,
@@ -115,8 +141,8 @@ export const useWeatherData = () => {
                 maxTemp: day.temp.max,
                 condition: day.weather[0].main,
                 humidity: day.humidity,
-                windSpeed: day.wind_speed,
-                precipitation: day.pop || 0
+                windSpeed: normalizeWindSpeed(day.wind_speed) ?? undefined,
+                precipitation: normalizePrecipitation(day.pop)
               }))
             );
             
@@ -204,6 +230,7 @@ export const useWeatherData = () => {
     fetchWeatherForCity,
     fetchWeatherForLocation,
     refreshWeatherData,
-    setGeoError
+    setGeoError,
+    forecastProvider,
   };
 };
