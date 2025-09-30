@@ -15,8 +15,8 @@ SkyCast is a modern weather intelligence dashboard that delivers current conditi
 - [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) on top of [Vite](https://vitejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/) for styled, accessible components
 - [TanStack Query](https://tanstack.com/query/latest) for data fetching and caching
-- [Supabase](https://supabase.com/) types prepared for future authentication (currently using local storage)
-- Node.js backend scaffold (see `server/`) for upcoming JWT authentication services
+- Local storage-backed preferences while we finish wiring the backend
+- Node.js + Express scaffold in `server/` for the upcoming JWT authentication service
 
 ## 🚀 Getting Started
 
@@ -29,10 +29,10 @@ SkyCast is a modern weather intelligence dashboard that delivers current conditi
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/skycast.git
+git clone https://github.com/udayan-mal/SkyCast.git
 
 # Move into the project directory
-cd skycast
+cd SkyCast
 
 # Install dependencies
 npm install
@@ -81,15 +81,15 @@ The production output lives in the `dist/` directory.
 
 ```
 SkyCast/
-├── public/              # Static assets
+├── public/              # Static assets (favicon, robots, placeholders)
 ├── src/
-│   ├── components/      # UI components (shadcn/ui based)
-│   ├── hooks/           # Custom hooks for auth, weather, theming, etc.
+│   ├── components/      # UI building blocks and layout pieces
+│   ├── hooks/           # Custom hooks for auth, weather, search, and theme
 │   ├── pages/           # Route-level views
-│   ├── integrations/    # External clients (e.g., Supabase)
-│   └── lib/             # API utilities & helpers
-├── server/              # Node/Express scaffold for upcoming JWT auth
-├── supabase/            # Supabase configuration & migrations
+│   ├── integrations/    # Future home for external SDKs and API clients
+│   └── lib/             # API utilities & helper functions
+├── server/              # Node/Express scaffold for the JWT auth API
+├── dist/                # Production build output (generated)
 └── README.md
 ```
 
