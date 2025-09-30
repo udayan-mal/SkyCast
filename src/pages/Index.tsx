@@ -52,7 +52,7 @@ const Index = () => {
   return (
     <div className={`min-h-screen transition-colors duration-500 weather-pattern ${pageBackground}`}>
       <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Header onUnitChange={refreshWeatherData} />
+  <Header onUnitChange={refreshWeatherData} onLocationSelect={handleSearch} />
 
   <SearchBar onSearch={handleSearch} onUseCurrentLocation={fetchWeatherForLocation} />
 

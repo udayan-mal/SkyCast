@@ -5,48 +5,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-
-interface FavoriteLocation {
-  id: string;
-  name: string;
-  country?: string;
-}
+import { useFavoriteCities } from "@/hooks/useFavoriteCities";
+import type { FavoriteCityRecord } from "@/hooks/useFavoriteCities";
 
 interface FavoriteLocationsProps {
   onLocationSelect: (location: string) => void;
 }
 
+const formatFavoriteLabel = (favorite: FavoriteCityRecord) => {
+  if (favorite.country) {
+    return favorite.state ? `${favorite.name}, ${favorite.state}, ${favorite.country}` : `${favorite.name}, ${favorite.country}`;
+  }
+  return favorite.name;
+};
+
 export const FavoriteLocations = ({ onLocationSelect }: FavoriteLocationsProps) => {
-  const [favorites, setFavorites] = useLocalStorage<FavoriteLocation[]>('favoriteLocations', []);
+  const { favorites, addFavorite, removeFavorite } = useFavoriteCities();
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newLocation, setNewLocation] = useState("");
 
-  const addFavorite = () => {
+  const handleAddFavorite = () => {
     if (!newLocation.trim()) {
       toast.error("Please enter a location name");
       return;
     }
 
-    const newFav: FavoriteLocation = {
-      id: Date.now().toString(),
-      name: newLocation.trim(),
-    };
-
-    setFavorites([...favorites, newFav]);
+    addFavorite({ name: newLocation.trim() });
     setNewLocation("");
     setIsAddingNew(false);
-    toast.success(`Added ${newLocation} to favorites`);
   };
 
-  const removeFavorite = (id: string) => {
-    const location = favorites.find(f => f.id === id);
-    setFavorites(favorites.filter(f => f.id !== id));
-    toast.success(`Removed ${location?.name} from favorites`);
-  };
-
-  const handleLocationClick = (location: FavoriteLocation) => {
-    onLocationSelect(location.name);
+  const handleLocationClick = (favorite: FavoriteCityRecord) => {
+    onLocationSelect(formatFavoriteLabel(favorite));
   };
 
   if (favorites.length === 0 && !isAddingNew) {
@@ -85,36 +75,48 @@ export const FavoriteLocations = ({ onLocationSelect }: FavoriteLocationsProps) 
               placeholder="Enter location name"
               value={newLocation}
               onChange={(e) => setNewLocation(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addFavorite()}
+              onKeyDown={(e) => e.key === "Enter" && handleAddFavorite()}
               className="text-sm"
             />
-            <Button size="sm" onClick={addFavorite}>Add</Button>
-            <Button size="sm" variant="outline" onClick={() => {
-              setIsAddingNew(false);
-              setNewLocation("");
-            }}>
+            <Button size="sm" onClick={handleAddFavorite}>Add</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setIsAddingNew(false);
+                setNewLocation("");
+              }}
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
         )}
 
         <div className="space-y-2">
-          {favorites.map((location) => (
+          {favorites.map((favorite) => (
             <div
-              key={location.id}
+              key={favorite.id}
               className="flex items-center justify-between p-2 rounded-md hover:bg-white/20 dark:hover:bg-slate-700/30 cursor-pointer transition-colors"
-              onClick={() => handleLocationClick(location)}
+              onClick={() => handleLocationClick(favorite)}
             >
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                <span className="text-sm">{location.name}</span>
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-medium">{favorite.name}</span>
+                  {favorite.state && (
+                    <span className="text-xs text-muted-foreground">{favorite.state}{favorite.country ? `, ${favorite.country}` : ""}</span>
+                  )}
+                  {!favorite.state && favorite.country && (
+                    <span className="text-xs text-muted-foreground">{favorite.country}</span>
+                  )}
+                </div>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeFavorite(location.id);
+                  removeFavorite(favorite.id);
                 }}
                 className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
               >
